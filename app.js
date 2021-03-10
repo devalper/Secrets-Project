@@ -2,6 +2,7 @@
 const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption');
 
 
 // DECLARING OUR EXPRESS APP
@@ -28,14 +29,17 @@ const userSchema = new mongoose.Schema({
   password: String
 });
 
+// 2-a) ADDING ENCRYPTION PLUGIN BEFORE CREATING OUR MODEL
+const secret = "Thisisourlittlesecret.";
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+
+
 // 3) CREATE NEW MODEL (our collection) BASED ON OUR SCHEMA
 
 const User = new mongoose.model('User', userSchema);
 
 
-
-
-// SEETING OUR GET ROUTES
+// SETTING OUR GET ROUTES
 
 app.get('/', (req, res) => {
   res.render("home");
@@ -85,6 +89,7 @@ app.post('/login', (req, res) => {
     }
   });
 });
+
 
 // LISTEN TO PORT
 app.listen(3000, () => {
