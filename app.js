@@ -1,4 +1,5 @@
 // REQUIRING OUR DEPENDENCIES
+require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
@@ -30,8 +31,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // 2-a) ADDING ENCRYPTION PLUGIN BEFORE CREATING OUR MODEL
-const secret = "Thisisourlittlesecret.";
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 
 // 3) CREATE NEW MODEL (our collection) BASED ON OUR SCHEMA
