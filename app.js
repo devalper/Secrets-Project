@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const session = require('express-session');
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
 
 
 // DECLARING OUR EXPRESS APP
@@ -31,6 +33,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+
 //DATABASE CREATION STEPS WITH MONGOOSE
 
 // 1) CREATE NEW DATABASE INSIDE MongoDB
@@ -41,11 +44,17 @@ mongoose.set('useCreateIndex', true); // for fixing the deprecation warning
 const userSchema = new mongoose.Schema({
 
   email: String,
-  password: String
+  password: String,
+  googleId: String
 });
 
 // SET UP passport-local-mongoose
 userSchema.plugin(passportLocalMongoose);
+
+// SET UP findOrCreate
+userSchema.plugin(findOrCreate);
+
+
 
 // 3) CREATE NEW MODEL (our collection) BASED ON OUR SCHEMA
 
@@ -54,14 +63,49 @@ const User = new mongoose.model('User', userSchema);
 // SIMPLIFIED passport/passport-local CONFIGURATION
 passport.use(User.createStrategy());
 
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
 
-// SETTING OUR GET ROUTES
+passport.deserializeUser((id, done) => {
+  User.findById(id, (err, user) => {
+    done(err, user);
+  });
+});
+
+// CONFIGURING passport GOOGLE STRATEGY
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: "http://localhost:3000/auth/google/secrets"
+},
+  (accessToken, refreshToken, profile, cb) => {
+    console.log(profile);
+
+    User.findOrCreate({ googleId: profile.id }, (err, user) => {
+      return cb(err, user);
+    });
+  }
+));
+
+// SETTING OUR GET REQUESTS
 
 app.get('/', (req, res) => {
   res.render("home");
 });
+
+//GOOGLE AUTHENTICATION REQUEST
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] })
+);
+
+app.get('/auth/google/secrets',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    // Successful authentication, redirect secrets.
+    res.redirect('/secrets');
+  });
+
 
 app.get('/login', (req, res) => {
   res.render("login");
